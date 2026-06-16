@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premium Multi-Theme Monitoring Dashboard - Tarakan v3.9</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://plugins.krause-io.de/leaflet-omnivore/leaflet-omnivore.min.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s ease, color 0.3s ease; }
+        aside, section, header, table, tr, th, td, input, select { transition: all 0.3s ease; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        .theme-dark ::-webkit-scrollbar-track { background: #0f172a; }
+        .theme-dark ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        .theme-light ::-webkit-scrollbar-track { background: #f1f5f9; }
+        .theme-light ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        #map { height: 450px; width: 100%; border-radius: 12px; }
+
+        /* ==========================================================================
+           TAMBAHAN EFEK ANIMASI TANPA MERUBAH STRUKTUR DAN LOGIKA ASLI v3.6
+           ========================================================================== */
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animasi-masuk {
+            animation: fadeSlideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .efek-hover-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .efek-hover-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 20px -5px rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.4);
+        }
+        .tombol-interaktif {
+            transition: all 0.2s ease-in-out;
+        }
+        .tombol-interaktif:hover { transform: scale(1.02); }
+        .tombol-interaktif:active { transform: scale(0.97); }
+        tr.baris-tabel-hover { transition: background-color 0.2s ease; }
+        tr.baris-tabel-hover:hover { background-color: rgba(99, 102, 241, 0.04) !important; }
+    </style>
+</head>
+<body 
+
+class="theme-dark bg-[#0b0f19] text-slate-200 antialiased flex min-h-screen" id="bodyElement">
+
+    <aside id="sidebarElement" class="w-52 bg-[#0f1524] text-slate-400 flex flex-col justify-between p-4 shrink-0 shadow-2xl border-r border-slate-800/80">
+        <div>
+            <div id="brandBorder" class="flex items-center gap-2.5 px-1 py-2 mb-5 border-b border-slate-800/60">
+                <div class="h-7 w-7 bg-indigo-600 rounded-lg flex items-center justify-center font-bold text-white text-xs shadow-lg shadow-indigo-500/30">
+                    T
+                </div>
+                <div>
+                    <h1 id="brandText" class="text-xs font-bold text-white tracking-wide">MONITORING</h1>
+                    <p class="text-[9px] text-slate-500 font-medium">Tarakan v3.9 Enhanced</p>
+                </div>
+            </div>
+
+            <nav class="space-y-0.5 text-[11px] font-medium">
+                <a href="#formContainer" class="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-indigo-600/10 text-indigo-400 border border-indigo-500/20 transition tombol-interaktif">
+                    ⚡ Form Input Proyek
+                </a>
+                <a href="#panelWaspang" class="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-800/50 hover:text-slate-200 transition tombol-interaktif">
+                    📈 Kinerja Waspang
+                </a>
+                <a href="#sectionGrafik" class="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-800/50 hover:text-slate-200 transition tombol-interaktif">
+                    📊 Analisis & Grafik
+                </a>
+                <a href="#sectionTabel" class="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-800/50 hover:text-slate-200 transition tombol-interaktif">
+                    📋 Daftar Pekerjaan
+                </a>
+                <a href="#sectionMap" class="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-800/50 hover:text-slate-200 transition text-teal-400 tombol-interaktif">
+                    🗺️ Visualisasi Peta KML
+                </a>
+            </nav>
+        </div>
+
+        <div id="profileBox" class="bg-slate-950/40 p-2 rounded-lg border border-slate-800/50 flex items-center gap-2 text-[10px]">
+            <div class="h-6 w-6 rounded-full bg-indigo-500/20 text-indigo-400 font-bold flex items-center justify-center border border-indigo-500/30 shrink-0">
+                U
+            </div>
+            <div class="truncate">
+                <p id="profileName" class="font-semibold text-slate-300 truncate">Single User</p>
+                <p class="text-[8px] text-emerald-400 flex items-center gap-1 font-medium">
+                    <span class="h-1 w-1 rounded-full bg-emerald-400 animate-pulse"></span> Live
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 p-8 overflow-y-auto max-w-[1600px] mx-auto w-full">
+        
+        <header id="headerElement" class="flex justify-between items-center mb-8 pb-4 border-b border-slate-800/60 animasi-masuk">
+            <div>
+                <p class="text-xs font-semibold text-indigo-400 tracking-wider uppercase">Workspace</p>
+                <h2 id="headerTitle" class="text-xl font-bold text-white tracking-tight">Premium Dashboard Overview</h2>
+            </div>
+            <div class="flex items-center gap-3 text-xs">
+                <button onclick="toggleTema()" id="btnThemeToggle" class="bg-[#0f1524] hover:bg-indigo-600/10 text-amber-400 hover:text-indigo-400 px-3.5 py-2 rounded-xl shadow-md border border-slate-800/80 font-bold cursor-pointer transition tombol-interaktif flex items-center gap-2">
+                    <span id="themeIcon">☀️</span> <span id="themeText">Light Mode</span>
+                </button>
+                <div id="dateBadge" class="bg-[#0f1524] px-4 py-2 rounded-xl shadow-md border border-slate-800/80 font-medium text-slate-400">
+                    🗓️ Live: <span class="text-indigo-400 font-semibold" id="currentDate">12 Jun 2026</span>
+                </div>
+            </div>
+        </header>
+
+        <section class="bg-[#0f1524] p-6 rounded-2xl shadow-xl border border-slate-800/80 mb-8 animasi-masuk efek-hover-card" id="formContainer">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider" id="formTitle">Form Input Proyek Baru</h3>
+                <span class="text-[10px] bg-slate-800/50 text-indigo-400 px-2 py-0.5 rounded-md font-semibold" id="stepBadge">v3.9 - Database Safe Integrated</span>
+            </div>
+            <input type="hidden" id="editId" value="">
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs mb-6" id="formGrid">
+                <div>
+                    <label class="block text-slate-400 mb-1 font-medium input-label">Project ID (PID)</label>
+                    <input type="text" id="inPid" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-200 outline-hidden font-semibold input-field" placeholder="Contoh: PID2026-001">
+                </div>
+                <div>
+                    <label class="block text-amber-400 mb-1 font-medium input-label">ID IHLD</label>
+                    <input type="text" id="inIhld" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-200 outline-hidden font-semibold input-field" placeholder="Contoh: IHLD123456">
+                </div>
+                <div>
+                    <label class="block text-amber-500 mb-1 font-semibold input-label">No. PO (Purchase Order)</label>
+                    <input type="text" id="inPo" class="w-full p-2.5 bg-[#0b0f19] border border-amber-900/60 rounded-xl text-white outline-hidden font-mono font-bold input-field" placeholder="Contoh: PO/TA-TRK/2026/089">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-medium input-label">Batch / Gelombang</label>
+                    <select id="inBatch" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-300 outline-hidden input-field">
+                        <option value="Batch 1">Batch 1</option><option value="Batch 2">Batch 2</option><option value="Batch 3">Batch 3</option>
+                        <option value="Batch 4">Batch 4</option><option value="Batch 5">Batch 5</option>
+                    </select>
+                </div>
+                <div class="col-span-1 md:col-span-2">
+                    <label class="block text-slate-400 mb-1 font-medium input-label">Nama Proyek / LOP</label>
+                    <input type="text" id="inLop" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-200 outline-hidden font-semibold input-field" placeholder="Contoh: LOP_FTTH_MAMBUNGAN">
+                </div>
+                <div>
+                    <label class="block text-teal-400 mb-1 font-medium input-label">Bulan Pelaksanaan</label>
+                    <select id="inBulan" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-300 outline-hidden input-field">
+                        <option value="Januari">Januari</option><option value="Februari">Februari</option><option value="Maret">Maret</option>
+                        <option value="April">April</option><option value="Mei">Mei</option><option value="Juni">Juni</option>
+                        <option value="Juli">Juli</option><option value="Agustus">Agustus</option><option value="September">September</option>
+                        <option value="Oktober">Oktober</option><option value="November">November</option><option value="Desember">Desember</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-medium input-label">Tematik</label>
+                    <select id="inTematik" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-300 outline-hidden input-field">
+                        <option value="MicroDemand">MicroDemand</option><option value="HEM">HEM</option><option value="Mitratel">Mitratel</option>
+                        <option value="PT2 Expand">PT2 Expand</option><option value="UNSC">UNSC</option><option value="OLT">OLT</option>
+                        <option value="Node B">Node B</option><option value="External">External</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-medium input-label">Waspang</label>
+                    <select id="inWaspang" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-300 outline-hidden input-field">
+                        <option value="Ardianto">Ardianto</option><option value="Abbas">Abbas</option><option value="Muh Rahim">Muh Rahim</option><option value="Sutianto">Sutianto</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-medium input-label">PIC Admin</label>
+                    <select id="inAdmin" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-300 outline-hidden input-field">
+                        <option value="Mustakim">Mustakim</option><option value="Rukamana">Rukamana</option><option value="Haidir">Haidir</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-indigo-400 mb-1 font-medium input-label">Mitra Pelaksana</label>
+                    <select id="inMitra" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-300 outline-hidden input-field">
+                        <option value="PT Telkom Akses">PT Telkom Akses</option>
+                        <option value="Borneo Sarana Teknik">Borneo Sarana Teknik</option>
+                        <option value="Garindo Tekno Mandiri">Garindo Tekno Mandiri</option>
+                        <option value="Fiberhome">Fiberhome</option>
+                        <option value="Swakelola">Swakelola</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-medium input-label">Nilai Plan (Rp)</label>
+                    <input type="number" id="inPlan" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-200 outline-hidden font-mono input-field" value="0">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-medium input-label">Nilai Actual (Rp)</label>
+                    <input type="number" id="inActual" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-200 outline-hidden font-mono input-field" value="0">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-medium input-label">Tanggal Mulai</label>
+                    <input type="date" id="inTglMulai" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-200 outline-hidden input-field">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1 font-medium input-label">Tanggal Selesai (Go Live)</label>
+                    <input type="date" id="inTglSelesai" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-200 outline-hidden input-field">
+                </div>
+                <div>
+                    <label class="block text-indigo-400 mb-1 font-semibold">Status Fisik</label>
+                    <select id="inStatus" class="w-full p-2.5 bg-[#0b0f19] border border-indigo-900 rounded-xl text-indigo-400 outline-hidden font-medium input-field">
+                        <option value="Persiapan">Persiapan</option><option value="Matdelv">Matdelv</option><option value="Instalasi">Instalasi</option>
+                        <option value="Finish Instalasi">Finish Instalasi</option><option value="Go Live">Go Live</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-purple-400 mb-1 font-semibold">Status Pengujian</label>
+                    <select id="inPengujian" class="w-full p-2.5 bg-[#0b0f19] border border-purple-900 rounded-xl text-purple-400 outline-hidden font-medium input-field">
+                        <option value="Belum Commtest">Belum Commtest</option><option value="Proses Commtest">Proses Commtest</option>
+                        <option value="Lulus Commtest">Lulus Commtest</option><option value="Proses Uji Terima">Proses Uji Terima</option>
+                        <option value="Selesai Uji Terima">Selesai Uji Terima</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-teal-500 mb-1 font-semibold">Status Rekon / BAST</label>
+                    <select id="inRekon" class="w-full p-2.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-400 outline-hidden font-medium input-field">
+                        <option value="Belum Rekon">Belum Rekon</option><option value="Proses Rekon">Proses Rekon</option><option value="Sudah BAST">Sudah BAST</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-rose-400 mb-1 font-semibold flex items-center gap-1">📂 Upload PDF Lampiran</label>
+                    <input type="file" id="inPdfFile" accept="application/pdf" class="w-full p-1.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-400 text-[11px] outline-hidden cursor-pointer input-field">
+                    <p class="text-[9px] text-slate-500 mt-0.5" id="pdfStatusText">*Format .pdf saja</p>
+                </div>
+                <div>
+                    <label class="block text-teal-400 mb-1 font-semibold flex items-center gap-1">🗺️ Upload Berkas KML</label>
+                    <input type="file" id="inKmlFile" accept=".kml" class="w-full p-1.5 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-400 text-[11px] outline-hidden cursor-pointer input-field">
+                    <p class="text-[9px] text-slate-500 mt-0.5" id="kmlStatusText">*Format .kml Google Earth</p>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-800/80 pt-4 mt-4">
+                <h4 class="text-[11px] font-bold text-indigo-400 uppercase tracking-wider mb-3">🛠️ Alokasi & Spesifikasi Material Lapangan</h4>
+                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-3 text-xs">
+                    <div>
+                        <label class="block text-slate-400 mb-1 text-[11px]">Kabel (Meter)</label>
+                        <input type="number" id="matKabel" class="w-full p-2 bg-[#0b0f19] border border-slate-800 rounded-lg text-slate-200 outline-hidden input-field" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-amber-400 mb-1 text-[11px]">Ukuran Tiang</label>
+                        <select id="matTiangUkuran" class="w-full p-2 bg-[#0b0f19] border border-slate-800 rounded-lg text-slate-300 outline-hidden input-field">
+                            <option value="Tiang 7">Tiang 7 Meter</option>
+                            <option value="Tiang 9">Tiang 9 Meter</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-amber-400 mb-1 text-[11px]">Konstruksi Segmen</label>
+                        <select id="matTiangSegmen" class="w-full p-2 bg-[#0b0f19] border border-slate-800 rounded-lg text-slate-300 outline-hidden input-field">
+                            <option value="2 Segment">2 Segment</option>
+                            <option value="3 Segment">3 Segment</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-amber-400 mb-1 text-[11px]">Volume Tiang (Btg)</label>
+                        <input type="number" id="matTiangVol" class="w-full p-2 bg-[#0b0f19] border border-slate-800 rounded-lg text-slate-200 outline-hidden input-field" value="0">
+                    </div>
+
+                    <div class="bg-indigo-950/20 p-1.5 rounded-xl border border-indigo-500/30 grid grid-cols-2 gap-2 col-span-2">
+                        <div>
+                            <label class="block text-indigo-400 mb-1 text-[11px] font-bold">ODP (Unit)</label>
+                            <input type="number" id="matOdp" oninput="hitungOtomatisPort()" class="w-full p-2 bg-[#0b0f19] border border-indigo-700/60 rounded-lg text-white font-bold outline-hidden text-center" value="0">
+                        </div>
+                        <div>
+                            <label class="block text-emerald-400 mb-1 text-[11px] font-bold">Port (Otomatis)</label>
+                            <input type="text" id="matPortDisplay" class="w-full p-2 bg-slate-900 border border-slate-800 rounded-lg text-emerald-400 font-bold text-center outline-hidden" value="0 Port" readonly>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-400 mb-1 text-[11px]">Closure (Box)</label>
+                        <input type="number" id="matClosure" class="w-full p-2 bg-[#0b0f19] border border-slate-800 rounded-lg text-slate-200 outline-hidden input-field" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1 text-[11px]">Patchcore 1m</label>
+                        <input type="number" id="matPatchcore1" class="w-full p-2 bg-[#0b0f19] border border-slate-800 rounded-lg text-slate-200 outline-hidden input-field" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1 text-[11px]">Patchcore 50m</label>
+                        <input type="number" id="matPatchcore50" class="w-full p-2 bg-[#0b0f19] border border-slate-800 rounded-lg text-slate-200 outline-hidden input-field" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1 text-[11px]">Splitter 1:4</label>
+                        <input type="number" id="matSplitter" class="w-full p-2 bg-[#0b0f19] border border-slate-800 rounded-lg text-slate-200 outline-hidden input-field" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1 text-[11px]">OTB 12</label>
+                        <input type="number" id="matOtb12" class="w-full p-2 bg-[#0b0f19] border border-slate-800 rounded-lg text-slate-200 outline-hidden input-field" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-slate-400 mb-1 text-[11px]">OTB 24</label>
+                        <input type="number" id="matOtb24" class="w-full p-2 bg-[#0b0f19] border border-slate-800 rounded-lg text-slate-200 outline-hidden input-field" value="0">
+                    </div>
+
+                    <div class="bg-indigo-950/20 p-2 rounded-xl border border-indigo-900/40 grid grid-cols-3 gap-2 col-span-3 sm:col-span-2">
+                        <div>
+                            <label class="block text-teal-400 mb-0.5 text-[10px] font-bold">Vol SC (Pcs)</label>
+                            <input type="number" id="matAccSc" class="w-full p-1.5 bg-[#0b0f19] border border-slate-800 rounded-md text-slate-200 outline-hidden input-field" value="0">
+                        </div>
+                        <div>
+                            <label class="block text-teal-400 mb-0.5 text-[10px] font-bold">Vol DE (Pcs)</label>
+                            <input type="number" id="matAccDe" class="w-full p-1.5 bg-[#0b0f19] border border-slate-800 rounded-md text-slate-200 outline-hidden input-field" value="0">
+                        </div>
+                        <div>
+                            <label class="block text-teal-400 mb-0.5 text-[10px] font-bold">S. Belt (Roll)</label>
+                            <input type="number" id="matAccSb" class="w-full p-1.5 bg-[#0b0f19] border border-slate-800 rounded-md text-slate-200 outline-hidden input-field" value="0">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 items-end col-span-2 sm:col-span-2 mt-2">
+                        <button onclick="simpanData()" id="btnSimpan" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-xl font-bold cursor-pointer transition shadow-lg shadow-indigo-500/20 tombol-interaktif">
+                            Simpan Proyek
+                        </button>
+                        <button onclick="batalEdit()" id="btnBatal" class="hidden bg-slate-800 hover:bg-slate-700 text-slate-300 p-2.5 rounded-xl font-bold cursor-pointer transition tombol-interaktif">
+                            Batal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-[#0f1524] rounded-2xl shadow-xl border border-slate-800/80 mb-8 overflow-hidden animasi-masuk" id="panelWaspang">
+            <div class="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/20 panel-sub-header">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 panel-sub-title">
+                    📊 Real-Time Achievement Kawalan Waspang
+                </h3>
+                <span class="text-[10px] font-bold text-slate-500 font-mono">TARGET KELULUSAN &ge; Rp 1,000,000,000</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs table-element">
+                    <thead>
+                        <tr class="text-slate-500 text-[10px] uppercase font-bold border-b border-slate-800 bg-slate-900/10 table-header-row">
+                            <th class="p-4 pl-6">Nama Waspang</th>
+                            <th class="p-4 text-center">Jumlah Proyek</th>
+                            <th class="p-4 text-right">Total Nilai Actual (Achievement)</th>
+                            <th class="p-4 text-center pr-6">Status Kelulusan Target</th>
+                        </tr>
+                    </thead>
+                    <tbody id="angkaWaspangBody" class="font-medium text-slate-300 divide-y divide-slate-800/40"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8" id="sectionGrafik">
+            <div class="bg-[#0f1524] p-5 rounded-2xl shadow-xl border border-slate-800/80 lg:col-span-2 chart-card animasi-masuk efek-hover-card">
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 card-title">Project Berjalan Vs Go Live (Per Tematik)</h4>
+                <div class="h-64"><canvas id="chartTematik"></canvas></div>
+            </div>
+            <div class="bg-[#0f1524] p-5 rounded-2xl shadow-xl border border-slate-800/80 chart-card animasi-masuk efek-hover-card">
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 card-title">Distribusi Proyek Per Waspang</h4>
+                <div class="h-64 flex justify-center"><canvas id="chartRankWaspang"></canvas></div>
+            </div>
+            <div class="bg-[#0f1524] p-5 rounded-2xl shadow-xl border border-slate-800/80 lg:col-span-2 chart-card animasi-masuk efek-hover-card">
+                <h4 class="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1 card-title">🔥 Potensi Go Live (Status: Finish Instalasi)</h4>
+                <div class="h-64"><canvas id="chartPotensiGoLive"></canvas></div>
+            </div>
+            <div class="bg-[#0f1524] p-5 rounded-2xl shadow-xl border border-slate-800/80 flex flex-col justify-between chart-card animasi-masuk efek-hover-card">
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 card-title">Komparasi Plan & Actual vs Target Waspang</h4>
+                    <div class="h-40"><canvas id="chartNilaiWaspang"></canvas></div>
+                </div>
+                <div class="mt-4 p-4 bg-rose-950/20 border border-rose-900/50 rounded-xl alert-box">
+                    <h5 class="text-xs font-bold text-rose-400 mb-2">⚠️ Evaluasi Waspang &lt; 1 Miliar</h5>
+                    <div id="catatanWaspangZonaMerah" class="text-[11px] text-rose-200 space-y-2"></div>
+                </div>
+            </div>
+            <div class="bg-[#0f1524] p-5 rounded-2xl shadow-xl border border-slate-800/80 lg:col-span-1.5 chart-card animasi-masuk efek-hover-card">
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 card-title">Realisasi Anggaran (Plan Vs Actual)</h4>
+                <div class="h-64"><canvas id="chartKeuangan"></canvas></div>
+            </div>
+            <div class="bg-[#0f1524] p-5 rounded-2xl shadow-xl border border-slate-800/80 lg:col-span-1.5 flex flex-col items-center chart-card animasi-masuk efek-hover-card">
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 w-full text-left card-title">Analisis Status Penyelesaian BAST</h4>
+                <div class="h-64 w-64"><canvas id="chartBAST"></canvas></div>
+            </div>
+        </section>
+
+        <section class="bg-[#0f1524] rounded-2xl shadow-xl border border-slate-800/80 overflow-hidden mb-8 animasi-masuk" id="sectionTabel">
+            <div class="p-5 border-b border-slate-800 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-slate-900/20 panel-sub-header">
+                <div>
+                    <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider panel-sub-title">Daftar Kontrol Durasi Lapangan & Logistik</h3>
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-2 text-xs w-full xl:w-auto">
+                    <input type="text" id="inCariProyek" onkeyup="renderTabel()" placeholder="🔍 Cari LOP, PID, IHLD, atau PO..." class="p-2 pl-4 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-300 font-medium outline-hidden text-xs input-field">
+                    <select id="fBulan" onchange="renderTabel()" class="p-2 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-300 outline-hidden filter-select"><option value="">-- Bulan --</option><option value="Januari">Januari</option><option value="Februari">Februari</option><option value="Maret">Maret</option><option value="April">April</option><option value="Mei">Mei</option><option value="Juni">Juni</option><option value="Juli">Juli</option><option value="Agustus">Agustus</option><option value="September">September</option><option value="Oktober">Oktober</option><option value="November">November</option><option value="Desember">Desember</option></select>
+                    <select id="fWaspang" onchange="renderTabel()" class="p-2 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-300 outline-hidden filter-select"><option value="">-- Waspang --</option><option value="Ardianto">Ardianto</option><option value="Abbas">Abbas</option><option value="Muh Rahim">Muh Rahim</option><option value="Sutianto">Sutianto</option></select>
+                    <select id="fTematik" onchange="renderTabel()" class="p-2 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-300 outline-hidden filter-select"><option value="">-- Tematik --</option><option value="MicroDemand">MicroDemand</option><option value="HEM">HEM</option><option value="Mitratel">Mitratel</option><option value="PT2 Expand">PT2 Expand</option><option value="UNSC">UNSC</option><option value="OLT">OLT</option><option value="Node B">Node B</option><option value="External">External</option></select>
+                    <select id="fStatus" onchange="renderTabel()" class="p-2 bg-[#0b0f19] border border-slate-800 rounded-xl text-slate-300 outline-hidden filter-select"><option value="">-- Status Fisik --</option><option value="Persiapan">Persiapan</option><option value="Matdelv">Matdelv</option><option value="Instalasi">Instalasi</option><option value="Finish Instalasi">Finish Instalasi</option><option value="Go Live">Go Live</option></select>
+                    <button onclick="resetFilter()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl cursor-pointer font-semibold tombol-interaktif">Reset</button>
+                    
+                    <div class="flex items-center gap-1 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+                        <button onclick="exportKeExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-md tombol-interaktif">
+                            📊 Export
+                        </button>
+                        <label class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-md tombol-interaktif">
+                            📥 Import Excel
+                            <input type="file" id="excelImportFile" accept=".xlsx, .xls" class="hidden" onchange="importDariExcel(event)">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse table-element">
+                    <thead>
+                        <tr class="text-slate-500 text-[10px] uppercase font-bold border-b border-slate-800 bg-slate-900/10 table-header-row">
+                            <th class="p-4 pl-6">Bulan / Batch</th>
+                            <th class="p-4">Administrasi (PID/IHLD/PO)</th>
+                            <th class="p-4">Nama Proyek / LOP</th>
+                            <th class="p-4">Tematik</th>
+                            <th class="p-4">Waspang/Admin</th>
+                            <th class="p-4">Mitra</th>
+                            <th class="p-4">Kapasitas</th>
+                            <th class="p-4">Plan / Actual</th>
+                            <th class="p-4">Durasi</th>
+                            <th class="p-4">Detail Material Terpasang</th>
+                            <th class="p-4">File Lampiran</th>
+                            <th class="p-4">Status & Pengujian</th>
+                            <th class="p-4 text-center pr-6">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelProyekBody" class="divide-y divide-slate-800/50"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="bg-[#0f1524] p-5 rounded-2xl shadow-xl border border-slate-800/80 animasi-masuk" id="sectionMap">
+            <h4 class="text-xs font-bold text-teal-400 uppercase tracking-wider mb-3">🗺️ Pemetaan Geografis Jalur KML Proyek Terpilih</h4>
+            <div id="map"></div>
+        </section>
+    </main>
+
+    <script>
+        const DB_KEY = "db_monitoring_tarakan_v36";
+        let projects = [];
+        let map, kmlLayer;
+        
+        let chartTematikObj, chartRankWaspangObj, chartPotensiGoLiveObj, chartNilaiWaspangObj, chartKeuanganObj, chartBASTObj;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            loadData();
+            hitungOtomatisPort();
+            initCharts();
+            renderTabel();
+        });
+
+        function initMap() {
+            map = L.map('map').setView([3.3150, 117.5900], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+        }
+
+        function loadData() {
+            const data = localStorage.getItem(DB_KEY);
+            if(data) {
+                try { projects = JSON.parse(data); } catch(e) { projects = []; }
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(DB_KEY, JSON.stringify(projects));
+            updateChartsAndPanels();
+        }
+
+        function hitungOtomatisPort() {
+            const odp = parseInt(document.getElementById('matOdp').value) || 0;
+            document.getElementById('matPortDisplay').value = (odp * 8) + " Port";
+        }
+
+        function simpanData() {
+            const pid = document.getElementById('inPid').value.trim();
+            const lop = document.getElementById('inLop').value.trim();
+            if(!pid || !lop) { alert('PID dan Nama LOP Wajib diisi!'); return; }
+            
+
+            const idEdit = document.getElementById('editId').value;
+            
+            const pObj = {
+                id: idEdit ? idEdit : "ID-" + Date.now(),
+                pid: pid,
+                ihld: document.getElementById('inIhld').value.trim(),
+                po: document.getElementById('inPo').value.trim(),
+                batch: document.getElementById('inBatch').value,
+                lop: lop,
+                bulan: document.getElementById('inBulan').value,
+                tematik: document.getElementById('inTematik').value,
+                waspang: document.getElementById('inWaspang').value,
+                admin: document.getElementById('inAdmin').value,
+                mitra: document.getElementById('inMitra').value,
+                plan: parseFloat(document.getElementById('inPlan').value) || 0,
+                actual: parseFloat(document.getElementById('inActual').value) || 0,
+                tglMulai: document.getElementById('inTglMulai').value,
+                tglSelesai: document.getElementById('inTglSelesai').value,
+                status: document.getElementById('inStatus').value,
+                pengujian: document.getElementById('inPengujian').value,
+                rekon: document.getElementById('inRekon').value,
+                
+                matKabel: parseInt(document.getElementById('matKabel').value) || 0,
+                matTiangUkuran: document.getElementById('matTiangUkuran').value,
+                matTiangSegmen: document.getElementById('matTiangSegmen').value,
+                matTiangVol: parseInt(document.getElementById('matTiangVol').value) || 0,
+                matOdp: parseInt(document.getElementById('matOdp').value) || 0,
+                matClosure: parseInt(document.getElementById('matClosure').value) || 0,
+                matPatchcore1: parseInt(document.getElementById('matPatchcore1').value) || 0,
+                matPatchcore50: parseInt(document.getElementById('matPatchcore50').value) || 0,
+                matSplitter: parseInt(document.getElementById('matSplitter').value) || 0,
+                matOtb12: parseInt(document.getElementById('matOtb12').value) || 0,
+                matOtb24: parseInt(document.getElementById('matOtb24').value) || 0,
+                matAccSc: parseInt(document.getElementById('matAccSc').value) || 0,
+                matAccDe: parseInt(document.getElementById('matAccDe').value) || 0,
+                matAccSb: parseInt(document.getElementById('matAccSb').value) || 0,
+                
+                pdfData: window.tempPdfData || (idEdit ? AmbilProyekLama(idEdit).pdfData : ""),
+                kmlData: window.tempKmlData || (idEdit ? AmbilProyekLama(idEdit).kmlData : "")
+            };
+
+            if(idEdit) {
+                const idx = projects.findIndex(p => p.id === idEdit);
+                if(idx !== -1) projects[idx] = pObj;
+            } else {
+                projects.push(pObj);
+            }
+
+            saveData();
+            renderTabel();
+            batalEdit();
+        }
+
+        function AmbilProyekLama(id) { return projects.find(p => p.id === id) || {}; }
+
+        // FILE HANDLER READER SYSTEM ASLI
+        document.getElementById('inPdfFile').addEventListener('change', function(e) {
+            const file = e.target.files[0]; if(!file) return;
+            const r = new FileReader();
+            r.onload = function(evt) { window.tempPdfData = evt.target.result; document.getElementById('pdfStatusText').innerText = "✓ PDF Terunggah"; };
+            r.readAsDataURL(file);
+        });
+
+        document.getElementById('inKmlFile').addEventListener('change', function(e) {
+            const file = e.target.files[0]; if(!file) return;
+            const r = new FileReader();
+            r.onload = function(evt) { window.tempKmlData = evt.target.result; document.getElementById('kmlStatusText').innerText = "✓ KML Terunggah"; };
+            r.readAsText(file);
+        });
+
+        function plotKmlPeta(id) {
+            if(kmlLayer) map.removeLayer(kmlLayer);
+            const p = projects.find(proj => proj.id === id);
+            if(!p || !p.kmlData) { alert('Tidak ada file spasial peta KML di dalam proyek ini.'); return; }
+            try {
+                kmlLayer = omnivore.kml.parse(p.kmlData);
+                kmlLayer.addTo(map);
+                kmlLayer.on('ready', () => { map.fitBounds(kmlLayer.getBounds()); });
+                alert('Berhasil merender visualisasi jalur KML Lapangan.');
+            } catch(e) { alert('Format KML salah atau tidak valid.'); }
+        }
+
+        function bukaPdfUnduh(id) {
+            const p = projects.find(proj => proj.id === id);
+            if(!p || !p.pdfData) { alert('Dokumen PDF tidak terlampir.'); return; }
+            const w = window.open();
+            w.document.write('<iframe src="' + p.pdfData + '" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>');
+        }
+
+        function editProyek(id) {
+            const p = projects.find(proj => proj.id === id); if(!p) return;
+            document.getElementById('editId').value = p.id;
+            document.getElementById('formTitle').innerText = "✏️ Mode Edit Proyek: " + p.pid;
+            
+            document.getElementById('inPid').value = p.pid;
+            document.getElementById('inIhld').value = p.ihld || "";
+            document.getElementById('inPo').value = p.po || "";
+            document.getElementById('inBatch').value = p.batch;
+            document.getElementById('inLop').value = p.lop;
+            document.getElementById('inBulan').value = p.bulan;
+            document.getElementById('inTematik').value = p.tematik;
+            document.getElementById('inWaspang').value = p.waspang;
+            document.getElementById('inAdmin').value = p.admin;
+            document.getElementById('inMitra').value = p.mitra;
+            document.getElementById('inPlan').value = p.plan;
+            document.getElementById('inActual').value = p.actual;
+            document.getElementById('inTglMulai').value = p.tglMulai || "";
+            document.getElementById('inTglSelesai').value = p.tglSelesai || "";
+            document.getElementById('inStatus').value = p.status;
+            document.getElementById('inPengujian').value = p.pengujian;
+            document.getElementById('inRekon').value = p.rekon;
+
+            document.getElementById('matKabel').value = p.matKabel || 0;
+            document.getElementById('matTiangUkuran').value = p.matTiangUkuran || "Tiang 7";
+            document.getElementById('matTiangSegmen').value = p.matTiangSegmen || "2 Segment";
+            document.getElementById('matTiangVol').value = p.matTiangVol || 0;
+            document.getElementById('matOdp').value = p.matOdp || 0;
+            document.getElementById('matClosure').value = p.matClosure || 0;
+            document.getElementById('matPatchcore1').value = p.matPatchcore1 || 0;
+            document.getElementById('matPatchcore50').value = p.matPatchcore50 || 0;
+            document.getElementById('matSplitter').value = p.matSplitter || 0;
+            document.getElementById('matOtb12').value = p.matOtb12 || 0;
+            document.getElementById('matOtb24').value = p.matOtb24 || 0;
+            document.getElementById('matAccSc').value = p.matAccSc || 0;
+            document.getElementById('matAccDe').value = p.matAccDe || 0;
+            document.getElementById('matAccSb').value = p.matAccSb || 0;
+
+            hitungOtomatisPort();
+            document.getElementById('btnBatal').classList.remove('hidden');
+            window.scrollTo({top: document.getElementById('formContainer').offsetTop - 20, behavior: 'smooth'});
+        }
+
+        function hapusProyek(id) {
+            if(confirm('Hapus proyek ini secara permanen dari database lokal?')) {
+                projects = projects.filter(p => p.id !== id);
+                saveData(); renderTabel();
+            }
+        }
+
+        function batalEdit() {
+            document.getElementById('editId').value = "";
+            document.getElementById('formTitle').innerText = "Form Input Proyek Baru";
+            document.getElementById('inPid').value = "";
+            document.getElementById('inIhld').value = "";
+            document.getElementById('inPo').value = "";
+            document.getElementById('inLop').value = "";
+            document.getElementById('inPlan').value = 0;
+            document.getElementById('inActual').value = 0;
+            document.getElementById('inTglMulai').value = "";
+            document.getElementById('inTglSelesai').value = "";
+            
+            document.getElementById('matKabel').value = 0;
+            document.getElementById('matTiangVol').value = 0;
+            document.getElementById('matOdp').value = 0;
+            document.getElementById('matClosure').value = 0;
+            document.getElementById('matPatchcore1').value = 0;
+            document.getElementById('matPatchcore50').value = 0;
+            document.getElementById('matSplitter').value = 0;
+            document.getElementById('matOtb12').value = 0;
+            document.getElementById('matOtb24').value = 0;
+            document.getElementById('matAccSc').value = 0;
+            document.getElementById('matAccDe').value = 0;
+            document.getElementById('matAccSb').value = 0;
+
+            window.tempPdfData = ""; window.tempKmlData = "";
+            document.getElementById('pdfStatusText').innerText = "*Format .pdf saja";
+            document.getElementById('kmlStatusText').innerText = "*Format .kml Google Earth";
+            hitungOtomatisPort();
+            document.getElementById('btnBatal').add('hidden');
+        }
+
+        function resetFilter() {
+            document.getElementById('inCariProyek').value = "";
+            document.getElementById('fBulan').value = "";
+            document.getElementById('fWaspang').value = "";
+            document.getElementById('fTematik').value = "";
+            document.getElementById('fStatus').value = "";
+            renderTabel();
+        }
+
+        // ENGINE RENDER TABEL & HITUNG DURASI HARI ASLI v3.6
+        function renderTabel() {
+            const body = document.getElementById('tabelProyekBody');
+            body.innerHTML = "";
+            
+            const q = document.getElementById('inCariProyek').value.toLowerCase();
+            const fM = document.getElementById('fBulan').value;
+            const fW = document.getElementById('fWaspang').value;
+            const fT = document.getElementById('fTematik').value;
+            const fS = document.getElementById('fStatus').value;
+
+            projects.forEach(p => {
+                if(q && !(p.lop.toLowerCase().includes(q) || p.pid.toLowerCase().includes(q) || (p.ihld && p.ihld.toLowerCase().includes(q)) || (p.po && p.po.toLowerCase().includes(q)))) return;
+                if(fM && p.bulan !== fM) return;
+                if(fW && p.waspang !== fW) return;
+                if(fT && p.tematik !== fT) return;
+                if(fS && p.status !== fS) return;
+
+                let durasi = "-";
+                if(p.tglMulai && p.tglSelesai) {
+                    const d1 = new Date(p.tglMulai); const d2 = new Date(p.tglSelesai);
+                    const selisih = d2 - d1;
+                    if(selisih >= 0) durasi = Math.ceil(selisih / (1000 * 60 * 60 * 24)) + " Hari";
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = "text-slate-300 bg-slate-900/40 border-b border-slate-800/60 text-[11px] baris-tabel-hover";
+                
+                tr.innerHTML = `
+                    <td class="p-4 pl-6 font-semibold">${p.bulan}<br><span class="text-slate-500">${p.batch}</span></td>
+                    <td class="p-4 font-mono font-medium">
+                        <span class="text-white block font-bold">${p.pid}</span>
+                        <span class="text-amber-400 block">${p.ihld || '-'}</span>
+                        <span class="text-slate-500 block text-[9px]">${p.po || '-'}</span>
+                    </td>
+                    <td class="p-4 text-white font-bold max-w-[180px] truncate">${p.lop}</td>
+                    <td class="p-4"><span class="px-2 py-0.5 bg-slate-800 rounded font-bold">${p.tematik}</span></td>
+                    <td class="p-4"><b>${p.waspang}</b><br><span class="text-slate-500">${p.admin}</span></td>
+                    <td class="p-4 text-slate-400 font-medium">${p.mitra}</td>
+                    <td class="p-4 text-center text-emerald-400 font-bold">${p.matOdp} ODP<br><span class="text-[9px] text-slate-500">${p.matOdp * 8} P</span></td>
+                    <td class="p-4 text-right font-mono">
+                        <span class="text-indigo-400 block">P: ${p.plan.toLocaleString('id-ID')}</span>
+                        <span class="text-emerald-400 block">A: ${p.actual.toLocaleString('id-ID')}</span>
+                    </td>
+                    <td class="p-4 text-center font-bold text-amber-500">${durasi}</td>
+                    <td class="p-4 text-[10px] text-slate-400 space-y-0.5">
+                        <div>🧵 Kbl: <b>${p.matKabel}m</b> | 🪵 Tng: <b>${p.matTiangVol} btg</b> (${p.matTiangUkuran})</div>
+                        <div>📦 Cls: <b>${p.matClosure}</b> | 🎛️ OTB: <b>12: ${p.matOtb12}, 24: ${p.matOtb24}</b></div>
+                    </td>
+                    <td class="p-4 space-y-1">
+                        ${p.pdfData ? `<button onclick="bukaPdfUnduh('${p.id}')" class="bg-rose-950/40 text-rose-400 px-2 py-0.5 rounded border border-rose-900 flex items-center gap-1 cursor-pointer font-bold w-full justify-center">📄 View</button>` : '<span class="text-slate-600 block text-center">-</span>'}
+                        ${p.kmlData ? `<button onclick="plotKmlPeta('${p.id}')" class="bg-teal-950/40 text-teal-400 px-2 py-0.5 rounded border border-teal-900 flex items-center gap-1 cursor-pointer font-bold w-full justify-center">🗺️ Trace</button>` : ''}
+                    </td>
+                    <td class="p-4 space-y-1 text-center">
+                        <span class="block px-2 py-0.5 rounded-sm font-bold text-[10px] ${p.status==='Go Live'?'bg-emerald-950 text-emerald-400':'bg-indigo-950 text-indigo-400'}">${p.status}</span>
+                        <span class="block text-[9px] text-slate-500">${p.pengujian}</span>
+                        <span class="block text-[9px] text-slate-400 font-mono">${p.rekon}</span>
+                    </td>
+                    <td class="p-4 text-center pr-6 whitespace-nowrap">
+                        <button onclick="editProyek('${p.id}')" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-2 py-1 rounded-md mr-1 cursor-pointer transition tombol-interaktif">Edit</button>
+                        <button onclick="hapusProyek('${p.id}')" class="bg-rose-600 hover:bg-rose-700 text-white font-bold px-2 py-1 rounded-md cursor-pointer transition tombol-interaktif">Hapus</button>
+                    </td>
+                `;
+                body.appendChild(tr);
+            });
+            updateChartsAndPanels();
+        }
+
+ // REALTIME KINERJA DAN EVALUASI WASPANG
+function updateChartsAndPanels() {
+    const waspangs = ["Ardianto", "Abbas", "Muh Rahim", "Sutianto"];
+    const tbody = document.getElementById('angkaWaspangBody');
+    const merahBox = document.getElementById('catatanWaspangZonaMerah');
+    
+    tbody.innerHTML = "";
+    merahBox.innerHTML = "";
+
+    let wCounts = {}, wActuals = {}, wPlans = {};
+    waspangs.forEach(w => { wCounts[w] = 0; wActuals[w] = 0; wPlans[w] = 0; });
+
+    // Perhitungan akumulasi
+    projects.forEach(p => {
+        if(wCounts[p.waspang] !== undefined) {
+            wCounts[p.waspang]++;
+            wActuals[p.waspang] += parseFloat(p.actual) || 0;
+            wPlans[p.waspang] += parseFloat(p.plan) || 0;
+        }
+    });
+
+    waspangs.forEach(w => {
+        const totalAct = wActuals[w];
+        const totalPlan = wPlans[w];
+        // Perhitungan Persentase (Achievement)
+        const persen = totalPlan > 0 ? ((totalAct / totalPlan) * 100).toFixed(1) : 0;
+        const lulus = totalAct >= 1000000000;
+        
+        const tr = document.createElement('tr');
+        tr.className = "border-b border-slate-800/40 text-[11px] baris-tabel-hover";
+        tr.innerHTML = `
+            <td class="p-4 pl-6 font-bold text-white">${w}</td>
+            <td class="p-4 text-center font-mono font-bold">${wCounts[w]} LOP</td>
+            <td class="p-4 text-right font-mono font-bold text-indigo-400">Rp ${totalAct.toLocaleString('id-ID')}</td>
+            <td class="p-4 text-center font-bold font-mono text-amber-500">${persen}%</td>
+            <td class="p-4 text-center pr-6">
+                <span class="px-3 py-1 rounded-full font-extrabold text-[10px] ${lulus?'bg-emerald-950 text-emerald-400 border border-emerald-800':'bg-rose-950 text-rose-400 border border-rose-900'}">
+                    ${lulus ? '✓ PASSED' : '✕ UNDER'}
+                </span>
+            </td>
+        `;
+        tbody.appendChild(tr);
+
+        // Menampilkan progress bar di zona merah jika belum lulus
+        if(!lulus) {
+            merahBox.innerHTML += `
+                <div class="mb-3">
+                    <div class="flex justify-between text-[10px] mb-1">
+                        <span class="font-bold">🔴 ${w}</span>
+                        <span class="font-mono text-rose-400">${persen}% dari target</span>
+                    </div>
+                    <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-700">
+                        <div class="bg-rose-600 h-full transition-all duration-500" style="width: ${Math.min(persen, 100)}%"></div>
+                    </div>
+                </div>`;
+        }
+    });
+
+    if(merahBox.innerHTML === "") {
+        merahBox.innerHTML = "<div class='text-emerald-400 font-bold p-2 text-center'>✓ Semua Waspang Telah Memenuhi Target Kelulusan 1 Miliar!</div>";
+    }
+
+    updateChartVisuals(waspangs, wCounts, wActuals, wPlans);
+}
+
+        // SISTEM ENGINE UNTUK 6 GRAFIK UTAMA
+        function initCharts() {
+            const opt = { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8', font: { size: 10, weight: 'bold' } } } }, scales: { x: { ticks: { color: '#94a3b8' }, grid: { display: false } }, y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(51,65,85,0.2)' } } } };
+
+            chartTematikObj = new Chart(document.getElementById('chartTematik').getContext('2d'), { type: 'bar', data: { labels: [], datasets: [{ label: 'Total', backgroundColor: '#4f46e5', data: [] }, { label: 'Go Live', backgroundColor: '#10b981', data: [] }] }, options: opt });
+            chartRankWaspangObj = new Chart(document.getElementById('chartRankWaspang').getContext('2d'), { type: 'doughnut', data: { labels: [], datasets: [{ backgroundColor: ['#f59e0b','#10b981','#3b82f6','#ec4899'], data: [] }] }, options: { responsive: true, maintainAspectRatio: false } });
+            chartPotensiGoLiveObj = new Chart(document.getElementById('chartPotensiGoLive').getContext('2d'), { type: 'line', data: { labels: [], datasets: [{ label: 'Finish Instalasi (Potensi)', borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', fill: true, data: [] }] }, options: opt });
+            chartNilaiWaspangObj = new Chart(document.getElementById('chartNilaiWaspang').getContext('2d'), { type: 'bar', data: { labels: [], datasets: [{ label: 'Plan', backgroundColor: '#3b82f6', data: [] }, { label: 'Actual', backgroundColor: '#10b981', data: [] }] }, options: opt });
+            chartKeuanganObj = new Chart(document.getElementById('chartKeuangan').getContext('2d'), { type: 'bar', data: { labels: ['Plan', 'Actual'], datasets: [{ label: 'Anggaran Keseluruhan', backgroundColor: ['#6366f1', '#10b981'], data: [0, 0] }] }, options: opt });
+            chartBASTObj = new Chart(document.getElementById('chartBAST').getContext('2d'), { type: 'pie', data: { labels: ['Belum BAST', 'Sudah BAST'], datasets: [{ backgroundColor: ['#334155', '#a855f7'], data: [0, 0] }] }, options: { responsive: true, maintainAspectRatio: false } });
+        }
+
+        function updateChartVisuals(waspangs, wCounts, wActuals, wPlans) {
+            if(!chartTematikObj) return;
+
+            // 1. Tematik Bar Chart Data
+            const tematikList = ["MicroDemand", "HEM", "Mitratel", "PT2 Expand", "UNSC", "OLT", "Node B", "External"];
+            let tTotal = {}, tGoLive = {}; tematikList.forEach(t => { tTotal[t] = 0; tGoLive[t] = 0; });
+            projects.forEach(p => {
+                if(tTotal[p.tematik] !== undefined) {
+                    tTotal[p.tematik]++;
+                    if(p.status === 'Go Live') tGoLive[p.tematik]++;
+                }
+            });
+            chartTematikObj.data.labels = tematikList;
+            chartTematikObj.data.datasets[0].data = tematikList.map(t => tTotal[t]);
+            chartTematikObj.data.datasets[1].data = tematikList.map(t => tGoLive[t]);
+            chartTematikObj.update();
+
+            // 2. Rank Waspang Doughnut Chart
+            chartRankWaspangObj.data.labels = waspangs;
+            chartRankWaspangObj.data.datasets[0].data = waspangs.map(w => wCounts[w]);
+            chartRankWaspangObj.update();
+
+            // 3. Potensi Go Live Line Chart
+            chartPotensiGoLiveObj.data.labels = tematikList;
+            chartPotensiGoLiveObj.data.datasets[0].data = tematikList.map(t => projects.filter(p => p.tematik === t && p.status === 'Finish Instalasi').length);
+            chartPotensiGoLiveObj.update();
+
+            // 4. Komparasi Nilai Waspang
+            chartNilaiWaspangObj.data.labels = waspangs;
+            chartNilaiWaspangObj.data.datasets[0].data = waspangs.map(w => wPlans[w]);
+            chartNilaiWaspangObj.data.datasets[1].data = waspangs.map(w => wActuals[w]);
+            chartNilaiWaspangObj.update();
+
+            // 5. Total Finansial Keuangan
+            let totalPlanAll = 0, totalActualAll = 0;
+            projects.forEach(p => { totalPlanAll += p.plan; totalActualAll += p.actual; });
+            chartKeuanganObj.data.datasets[0].data = [totalPlanAll, totalActualAll];
+            chartKeuanganObj.update();
+
+            // 6. Analisis BAST Pie Chart
+            const bSudah = projects.filter(p => p.rekon === 'Sudah BAST').length;
+            const bBelum = projects.length - bSudah;
+            chartBASTObj.data.datasets[0].data = [bBelum, bSudah];
+            chartBASTObj.update();
+        }
+
+        // INTEGRASI SYSTEM IMPORT & EXCEL BACKUP DENGAN DETIL MATERIAL LENGKAP
+        function exportKeExcel() {
+            if(projects.length === 0) { alert('Database kosong, tidak ada data untuk diekspor.'); return; }
+            const clean = projects.map(p => ({
+                "Bulan": p.bulan, "Batch": p.batch, "PID": p.pid, "ID IHLD": p.ihld, "No PO": p.po,
+                "Nama LOP / Proyek": p.lop, "Tematik": p.tematik, "Waspang": p.waspang, "Admin": p.admin, "Mitra": p.mitra,
+                "Plan (Rp)": p.plan, "Actual (Rp)": p.actual, "Tgl Mulai": p.tglMulai, "Tgl Selesai": p.tglSelesai,
+                "Status Fisik": p.status, "Pengujian": p.pengujian, "BAST": p.rekon,
+                "Material_Kabel(Meter)": p.matKabel, "Tiang_Ukuran": p.matTiangUkuran, "Tiang_Segmen": p.matTiangSegmen, "Tiang_Volume": p.matTiangVol,
+                "Material_ODP": p.matOdp, "Material_Closure": p.matClosure, "Patchcore_1m": p.matPatchcore1, "Patchcore_50m": p.matPatchcore50,
+                "Splitter_1_4": p.matSplitter, "OTB_12": p.matOtb12, "OTB_24": p.matOtb24, "Acc_SC": p.matAccSc, "Acc_DE": p.matAccDe, "Acc_S_Belt": p.matAccSb
+            }));
+            const ws = XLSX.utils.json_to_sheet(clean); const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Database TA Tarakan");
+            XLSX.writeFile(wb, "Backup_Data_Monitoring_v3.6_Tarakan.xlsx");
+        }
+
+        function importDariExcel(e) {
+            const f = e.target.files[0]; if(!f) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = evt.target.result;
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet);
+                    
+                    if(rows.length === 0) { alert('Struktur baris file excel kosong.'); return; }
+                    
+                    rows.forEach(r => {
+                        if(!r["PID"] || !r["Nama LOP / Proyek"]) return;
+                        const nObj = {
+                            id: "ID-" + Math.floor(Math.random() * 10000000) + "-" + Date.now(),
+                            pid: String(r["PID"]),
+                            ihld: String(r["ID IHLD"] || ""),
+                            po: String(r["No PO"] || ""),
+                            batch: r["Batch"] || "Batch 1",
+                            lop: r["Nama LOP / Proyek"],
+                            bulan: r["Bulan"] || "Januari",
+                            tematik: r["Tematik"] || "MicroDemand",
+                            waspang: r["Waspang"] || "Ardianto",
+                            admin: r["Admin"] || "Mustakim",
+                            mitra: r["Mitra"] || "PT Telkom Akses",
+                            plan: parseFloat(r["Plan (Rp)"]) || 0,
+                            actual: parseFloat(r["Actual (Rp)"]) || 0,
+                            tglMulai: r["Tgl Mulai"] || "",
+                            tglSelesai: r["Tgl Selesai"] || "",
+                            status: r["Status Fisik"] || "Persiapan",
+                            pengujian: r["Pengujian"] || "Belum Commtest",
+                            rekon: r["BAST"] || "Belum Rekon",
+                            
+                            matKabel: parseInt(r["Material_Kabel(Meter)"]) || 0,
+                            matTiangUkuran: r["Tiang_Ukuran"] || "Tiang 7",
+                            matTiangSegmen: r["Tiang_Segmen"] || "2 Segment",
+                            matTiangVol: parseInt(r["Tiang_Volume"]) || 0,
+                            matOdp: parseInt(r["Material_ODP"]) || 0,
+                            matClosure: parseInt(r["Material_Closure"]) || 0,
+                            matPatchcore1: parseInt(r["Patchcore_1m"]) || 0,
+                            matPatchcore50: parseInt(r["Patchcore_50m"]) || 0,
+                            matSplitter: parseInt(r["Splitter_1_4"]) || 0,
+                            matOtb12: parseInt(r["OTB_12"]) || 0,
+                            matOtb24: parseInt(r["OTB_24"]) || 0,
+                            matAccSc: parseInt(r["Acc_SC"]) || 0,
+                            matAccDe: parseInt(r["Acc_DE"]) || 0,
+                            matAccSb: parseInt(r["Acc_S_Belt"]) || 0,
+                            pdfData: "", kmlData: ""
+                        };
+                        
+                        const dIdx = projects.findIndex(p => p.pid === nObj.pid);
+                        if(dIdx !== -1) projects[dIdx] = nObj; else projects.push(nObj);
+                    });
+                    
+                    saveData(); renderTabel();
+                    alert('Database v3.6 Sukses Dipulihkan/Diimport dari Excel!');
+                } catch(err) { alert('Gagal memproses file excel, pastikan template data valid.'); }
+            };
+            reader.readAsBinaryString(f);
+        }
+
+        // SWITCH MULTI-THEME ENGINE CONTROL
+        function toggleTema() {
+            const body = document.getElementById('bodyElement');
+            const side = document.getElementById('sidebarElement');
+            const brandB = document.getElementById('brandBorder');
+            const brandT = document.getElementById('brandText');
+            const headE = document.getElementById('headerElement');
+            const headT = document.getElementById('headerTitle');
+            const btnT = document.getElementById('btnThemeToggle');
+            const iconT = document.getElementById('themeIcon');
+            const txtT = document.getElementById('themeText');
+            const dateB = document.getElementById('dateBadge');
+
+            if(body.classList.contains('theme-dark')) {
+                body.classList.replace('theme-dark', 'theme-light');
+                body.classList.replace('bg-[#0b0f19]', 'bg-slate-50');
+                body.classList.replace('text-slate-200', 'text-slate-800');
+                side.classList.replace('bg-[#0f1524]', 'bg-white');
+                side.classList.replace('border-slate-800/80', 'border-slate-200');
+                brandB.classList.replace('border-slate-800/60', 'border-slate-100');
+                brandT.classList.replace('text-white', 'text-slate-800');
+                headE.classList.replace('border-slate-800/60', 'border-slate-200');
+                headT.classList.replace('text-white', 'text-slate-900');
+                btnT.classList.replace('bg-[#0f1524]', 'bg-white');
+                btnT.classList.replace('border-slate-800/80', 'border-slate-200');
+                dateB.classList.replace('bg-[#0f1524]', 'bg-white');
+                dateB.classList.replace('border-slate-800/80', 'border-slate-200');
+                
+                iconT.innerText = "🌙"; txtT.innerText = "Dark Mode";
+            } else {
+                body.classList.replace('theme-light', 'theme-dark');
+                body.classList.replace('bg-slate-50', 'bg-[#0b0f19]');
+                body.classList.replace('text-slate-800', 'text-slate-200');
+                side.classList.replace('bg-white', 'bg-[#0f1524]');
+                side.classList.replace('border-slate-200', 'border-slate-800/80');
+                brandB.classList.replace('border-slate-100', 'border-slate-800/60');
+                brandT.classList.replace('text-slate-800', 'text-white');
+                headE.classList.replace('border-slate-200', 'border-slate-800/60');
+                headT.classList.replace('text-slate-900', 'text-white');
+                btnT.classList.replace('bg-white', 'bg-[#0f1524]');
+                btnT.classList.replace('border-slate-200', 'border-slate-800/80');
+                dateB.classList.replace('bg-white', 'bg-[#0f1524]');
+                dateB.classList.replace('border-slate-200', 'border-slate-800/80');
+                
+                iconT.innerText = "☀️"; txtT.innerText = "Light Mode";
+            }
+        }
+    </script>
+</body>
+</html>
