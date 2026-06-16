@@ -13,7 +13,7 @@
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://plugins.krause-io.de/leaflet-omnivore/leaflet-omnivore.min.js"></script>
+    <script src=<script src="https://unpkg.com/leaflet-omnivore@0.3.4/leaflet-omnivore.min.js"></script>
 
     <style>
         body { font-family: 'Inter', sans-serif; transition: background-color 0.3s ease, color 0.3s ease; }
@@ -982,24 +982,32 @@ function updateChartsAndPanels() {
     </script>
 </body>
 <script>
-    // Ini adalah tempat untuk menaruh URL dari Google Apps Script
-    const URL_SHEET = "https://script.google.com/macros/s/AKfycbx9xFWvxtsH5LO5z9BdMDG0_62iqLZdyJsz28s331cUUaudjJ92Nu-vqxtTRXXIsueT/exec";
+  const URL_SHEET = "https://script.google.com/macros/s/AKfycbx9xFWvxtsH5LO5z9BdMDG0_62iqLZdyJsz28s331cUUaudjJ92Nu-vqxtTRXXIsueT/exec"; // Pastikan kutipannya tetap ada
 
-    function kirimData() {
-        const data = {
-            nama: "User",
-            tanggal: new Date().toLocaleDateString(),
-            nilai: 0,
-            catatan: "Data dari web"
-        };
+function kirimData() {
+  const data = {
+    // Contoh data yang dikirim, sesuaikan dengan nama inputmu
+    nama: "Data Test", 
+    jumlah: 10
+  };
 
-        fetch(URL_SHEET, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
-        })
-        .then(() => alert("Data berhasil masuk!"));
+  fetch(URL_SHEET, {
+    method: 'POST',
+    mode: 'no-cors', // PENTING agar tidak kena blokir browser
+    cache: 'no-cache',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(data)
+  })
+  .then(() => {
+    alert("Data berhasil masuk!");
+  })
+  .catch(err => {
+    console.error("Error Detail:", err);
+    alert("Gagal kirim data, cek console!");
+  });
+}
     }
 </script>
 </html>
