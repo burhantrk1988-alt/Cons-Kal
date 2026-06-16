@@ -981,4 +981,25 @@ function updateChartsAndPanels() {
         }
     </script>
 </body>
+<script>
+    // Ini adalah tempat untuk menaruh URL dari Google Apps Script
+    const URL_SHEET = "https://script.google.com/macros/s/AKfycbx9xFWvxtsH5LO5z9BdMDG0_62iqLZdyJsz28s331cUUaudjJ92Nu-vqxtTRXXIsueT/exec";
+
+    function kirimData() {
+        const data = {
+            nama: "User",
+            tanggal: new Date().toLocaleDateString(),
+            nilai: 0,
+            catatan: "Data dari web"
+        };
+
+        fetch(URL_SHEET, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        })
+        .then(() => alert("Data berhasil masuk!"));
+    }
+</script>
 </html>
